@@ -25,7 +25,6 @@ ciphertxt3 = Entry(window,width=20)
 ciphertxt3.grid(column=1, row=4)
 denctxt3 = Entry(window,width=20)
 denctxt3.grid(column=3, row=4)
-
 def Char2Num(c): return ord(c)-65
 def Num2Char(n): return chr(n+65)
 def xgcd(a,m):						#b, a
