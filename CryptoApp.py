@@ -1,336 +1,788 @@
-# -*- coding: utf8 -*-
-from tkinter import *
-import tkinter.ttk
+import tkinter as tk
 from tkinter import filedialog
-import hashlib 
+import math
+from Crypto.Hash import SHA256, MD5, SHA1, SHA224, SHA384, SHA512
+from Crypto.Util.Padding import pad, unpad
+from Crypto import Random
+from Crypto.Cipher import DES
+from Crypto.Cipher import AES
+import binascii
+import base64
+import os
 
-root = Tk()
-root.title("Chương trình mã hóa đơn giản")
-root.geometry('800x700')
-
-intro_frame = Frame(root)
-intro_text_frame = Frame(root)
-top_frame = Frame(root)
-center_frame = Frame(root)
-bottom_frame = Frame(root)
-
-intro_frame.pack()
-intro_text_frame.pack()
-top_frame.pack()
-center_frame.pack()
-bottom_frame.pack(side = BOTTOM)
-#Giới thiệu chương trình
-def Char2Num(c): return ord(c)-65
-def Num2Char(n): return chr(n+65)
-def xgcd(a,m):						#b, a
-    temp = m						#a
-    x0, x1, y0, y1 = 1, 0, 0, 1
-    while m!=0:						#a
-    	q, a, m = a // m, m, a % m	#q, b, a = b // a, a, b % a
-    	x0, x1 = x1, x0 - q * x1
-    	y0, y1 = y1, y0 - q * y1
-    if x0 < 0: x0 = temp+x0
-    return x0
-def encrypt():
-    a,b,m = int(affine_key01.get()),int(affine_key02.get()),26
-    en_txt = ""
-    for c in plain_txt.get():
-    	e = (a*Char2Num(c)+b )%m	#e = [a*(char - 65) + b] mod 26
-    	en_txt = en_txt+Num2Char(e)			#r = r + e + 65
-    cipher_txt.delete(0,END)
-    cipher_txt.insert(INSERT,en_txt)
-    encrypt_toplevel = Toplevel()
-    encrypt_toplevel.title('Mã hóa')
-    encrypt_toplevel.geometry('200x40')
-    encrypt_success_label = Label(encrypt_toplevel, text="Mã hóa thành công"
-                    ,font=("Times New Roman Bold", 13))
-    encrypt_success_label.pack()
-def decrypt():
-    a,b,m = int(affine_key01.get()),int(affine_key02.get()),26
-    de_txt = ""
-    a1 = xgcd(a,m)
-    for c in cipher_txt.get():
-        e = (a1*(Char2Num(c)-b ))%m
-        de_txt = de_txt+Num2Char(e)
-    plain_txt.delete(0,END)
-    plain_txt.insert(INSERT,de_txt)
-    encrypt_toplevel = Toplevel()
-    encrypt_toplevel.title('Giải mã')
-    encrypt_toplevel.geometry('200x40')
-    decrypt_success_label = Label(encrypt_toplevel, text="Giải mã thành công"
-                    ,font=("Times New Roman Bold", 13))
-    decrypt_success_label.pack()
-intro_label = Label(intro_frame, text="Cùng thử nghiệm chương trình mã hóa đơn giản (Affine) ^_^"
-                    ,font=("Times New Roman Bold", 13))
-intro_label.pack()
-plain_label = Label(intro_text_frame, text="Nhập một đoạn văn bản (IN HOA): "
-                    ,font=("Times New Roman", 13))
-plain_label.grid(column=0, row=0)
-plain_txt = Entry(intro_text_frame,width=80)   #
-plain_txt.grid(column=1, row=0)
-cipher_label = Label(intro_text_frame, text="Đoạn kí tự đã mã hóa: "
-                     ,font=("Times New Roman", 13))
-cipher_label.grid(column=0, row=1)
-cipher_txt = Entry(intro_text_frame,width=80)   #
-cipher_txt.grid(column=1, row=1)
-affine_group = LabelFrame(top_frame, text = "Nhập hai kí tự khóa (số nguyên tố)"
-                    ,font=("Times New Roman", 13))
-affine_group.pack()
-affine_key_Label0 = Label(affine_group, text="khóa a "
-                        ,font=("Times New Roman", 13))
-affine_key_Label0.pack(side = LEFT)
-affine_key01 = Entry(affine_group,width=4)    #
-affine_key01.pack(side = LEFT)
-affine_key_Label1 = Label(affine_group, text=" khóa b "
-                        ,font=("Times New Roman", 13))
-affine_key_Label1.pack(side = RIGHT)
-affine_key02 = Entry(affine_group,width=4)    #
-affine_key02.pack(side = RIGHT)
-key_group = LabelFrame(top_frame)
-key_group.pack()
-encrypt_button = Button(key_group, text="Mã hóa"
-                        ,font=("Times New Roman", 11), command=encrypt)
-encrypt_button.pack(side = LEFT)
-decrypt_button = Button(key_group, text="Giải mã"
-                        ,font=("Times New Roman", 11), command=decrypt)
-decrypt_button.pack(side = RIGHT)
-#Symmetric encryption algorithm
-symmetric_group = LabelFrame(center_frame, text = "Mã hóa đối xứng"
-                        ,font=("Times New Roman", 13))
-symmetric_group.pack(side = TOP, fill="both", expand="yes")
-explain_sym_label = Label(symmetric_group, text="Ta dùng đồng thời cùng một key để mã hóa và giải mã"
-                        ,font=("Times New Roman", 13))
-explain_sym_label.pack()
-func_sym_group = LabelFrame(symmetric_group
-                    , text = "Chọn thuật toán",font=("Times New Roman", 13))
-func_sym_group.pack(side = LEFT, fill="both", expand="yes")
-function_sym = IntVar()                     #
-des_func = Radiobutton(func_sym_group, text = "DES"
-            ,font=("Times New Roman", 11), variable = function_sym, value = 0)
-des_func.pack(anchor=W)
-aes_func = Radiobutton(func_sym_group, text = "AES"
-            ,font=("Times New Roman", 11), variable = function_sym, value = 1)
-aes_func.pack(anchor=W)
-mode_sym_group = LabelFrame(symmetric_group, text = "Chọn chế độ hoạt động"
-                        ,font=("Times New Roman", 13))
-mode_sym_group.pack(side = LEFT, fill="both", expand="yes")
-mode_sym = IntVar()                         #
-ecb_mode = Radiobutton(mode_sym_group, text = "ECB (chế độ sách mã điện tử)"
-                ,font=("Times New Roman", 11), variable = mode_sym, value = 0)
-ecb_mode.pack(anchor=W)
-cbc_mode = Radiobutton(mode_sym_group, text = "CBC (chế độ xích liên kết khối)"
-                ,font=("Times New Roman", 11), variable = mode_sym, value = 1)
-cbc_mode.pack(anchor=W)
-def des_ecb_encrypt():
-    des_ecb_encrypt_toplevel = Toplevel()
-    des_ecb_encrypt_toplevel.title('Mã hóa')
-    des_ecb_encrypt_toplevel.geometry('600x500')
-def des_cbc_encrypt():
-    des_ecb_encrypt_toplevel = Toplevel()
-    des_ecb_encrypt_toplevel.title('Mã hóa')
-    des_ecb_encrypt_toplevel.geometry('600x500')
-def aes_ecb_encrypt():
-    des_ecb_encrypt_toplevel = Toplevel()
-    des_ecb_encrypt_toplevel.title('Mã hóa')
-    des_ecb_encrypt_toplevel.geometry('600x500')
-def aes_cbc_encrypt():
-    des_ecb_encrypt_toplevel = Toplevel()
-    des_ecb_encrypt_toplevel.title('Mã hóa')
-    des_ecb_encrypt_toplevel.geometry('600x500')
-def sym_encrypt():
-    if function_sym == mode_sym_group and function_sym == 0:
-        des_ecb_encrypt()
-    elif function_sym == 0 and function_sym == 1:
-        des_cbc_encrypt() 
-    elif function_sym == mode_sym_group and function_sym == 1:
-        aes_cbc_encrypt()
-    else:
-        aes_ecb_encrypt()
-def sym_decrypt():
-    sym_decrypt_toplevel = Toplevel()
-    sym_decrypt_toplevel.title('Giải mã')
-    sym_decrypt_toplevel.geometry('600x500')
-sym_decrypt_button = Button(symmetric_group, text="Giải mã"
-                            ,font=("Times New Roman", 11), command=sym_decrypt)
-sym_decrypt_button.pack(side = RIGHT, fill="both", expand="yes")
-sym_encrypt_button = Button(symmetric_group, text="Mã hóa"
-                            ,font=("Times New Roman", 11), command=sym_encrypt)
-sym_encrypt_button.pack(side = RIGHT, fill="both", expand="yes")
-#Asymmetric encryption algorithm
-asymmetric_group = LabelFrame(center_frame, text = "Mã hóa bất đối xứng"
-                        ,font=("Times New Roman", 13))
-asymmetric_group.pack(side = TOP, fill="both", expand="yes")
-explain_asym_label = Label(asymmetric_group, text="Ta dùng một key để mã hóa và một key khác để giải mã"
-                        ,font=("Times New Roman", 13))
-explain_asym_label.pack()
-func_asym_group = LabelFrame(asymmetric_group, text = "Chọn thuật toán",font=("Times New Roman", 13))
-func_asym_group.pack(side = LEFT, fill="both", expand="yes")
-function_sym = IntVar()                     #
-diffie_hellman_func = Radiobutton(func_asym_group, text = "Diffie–Hellman"
-                ,font=("Times New Roman", 11), variable = function_sym, value = 0)
-diffie_hellman_func.pack(anchor=W)
-rsa_func = Radiobutton(func_asym_group, text = "RSA"
-                ,font=("Times New Roman", 11), variable = function_sym, value = 1)
-rsa_func.pack(anchor=W)
-def asym_encrypt():
-    asym_encrypt_toplevel = Toplevel()
-    asym_encrypt_toplevel.title('Mã hóa')
-    asym_encrypt_toplevel.geometry('600x500')
-def asym_decrypt():
-    asym_decrypt_toplevel = Toplevel()
-    asym_decrypt_toplevel.title('Giải mã')
-    asym_decrypt_toplevel.geometry('600x500')
-asym_decrypt_button = Button(asymmetric_group, text="Giải mã"
-                        ,font=("Times New Roman", 11), command=asym_decrypt)
-asym_decrypt_button.pack(side = RIGHT, fill="both", expand="yes")
-asym_encrypt_button = Button(asymmetric_group, text="Mã hóa"
-                        ,font=("Times New Roman", 11), command=asym_encrypt)
-asym_encrypt_button.pack(side = RIGHT, fill="both", expand="yes")
-#Hashing
-hashing_group = LabelFrame(center_frame, text = "Băm"
-                    ,font=("Times New Roman", 13))
-hashing_group.pack(side = TOP, expand = True, fill = BOTH)
-explain_hash_label = Label(hashing_group, text="Ta băm một đoạn kí tự hoặc file ra một đoạn kí tự bất kì, không thể giải mã"
-                         ,font=("Times New Roman", 13))
-explain_hash_label.pack()
-func_hash_group = LabelFrame(hashing_group, text = "Chọn thuật toán"
-                        ,font=("Times New Roman", 13))
-func_hash_group.pack(side = LEFT, fill="both", expand="yes")
-function_hash = IntVar()
-md5_func = Radiobutton(func_hash_group, text = "Hash MD5"
-            ,font=("Times New Roman", 11), variable = function_hash, value = 0)
-md5_func.grid(row=0, column=0, sticky="W")
-sha1_func = Radiobutton(func_hash_group, text = "Hash SHA1"
-            ,font=("Times New Roman", 11), variable = function_hash, value = 1)
-sha1_func.grid(row=0, column=1, sticky="W")
-sha256_func = Radiobutton(func_hash_group, text = "Hash SHA256"
-            ,font=("Times New Roman", 11), variable = function_hash, value = 2)
-sha256_func.grid(row=1, column=0, sticky="W")
-sha224_func = Radiobutton(func_hash_group, text = "Hash SHA224"
-            ,font=("Times New Roman", 11), variable = function_hash, value = 3)
-sha224_func.grid(row=1, column=1, sticky="W")
-sha384_func = Radiobutton(func_hash_group, text = "Hash SHA384"
-            ,font=("Times New Roman", 11), variable = function_hash, value = 4)
-sha384_func.grid(row=2, column=0, sticky="W")
-sha512_func = Radiobutton(func_hash_group, text = "Hash SHA512"
-            ,font=("Times New Roman", 11), variable = function_hash, value = 5)
-sha512_func.grid(row=2, column=1, sticky="W")
-def open_hash_window():
-    def browse():
-        file = filedialog.askopenfilename(initialdir="D:/",
-                        title="Open", filetypes=(("Text files", "*.txt"), ("All files", "*.*")))
-        file_link.delete(0,END)
-        file_link.insert(INSERT, file)
-    def hashing(func, str):
-        if func == 0:
-            return hashlib.md5(str).hexdigest()
-        if func == 1:
-            return hashlib.sha1(str).hexdigest()
-        if func == 2:
-            return hashlib.sha256(str).hexdigest()
-        if func == 3:
-            return hashlib.sha224(str).hexdigest()
-        if func == 4:
-            return hashlib.sha384(str).hexdigest()
-        if func == 5:
-            return hashlib.sha512(str).hexdigest()
-    hash_toplevel = Toplevel()
-    hash_toplevel.title('Băm')
-    hash_toplevel.geometry('600x500')
-    hash_plain_label = Label(hash_toplevel, text="Nhập một đoạn văn bản : "
-                    ,font=("Times New Roman", 13))
-    hash_plain_label.grid(column=0, row=0)
-    hash_plain_txt = Entry(hash_toplevel,width=50)   #
-    hash_plain_txt.grid(column=1, row=0)
-    hash_cipher_label = Label(hash_toplevel, text="Đoạn kí tự đã băm: "
-                         ,font=("Times New Roman", 13))
-    hash_cipher_label.grid(column=0, row=1)
-    hash_cipher_txt = Entry(hash_toplevel,width=50)   #
-    hash_cipher_txt.grid(column=1, row=1)
-    file_label = Label(hash_toplevel, text="File:",font=("Times New Roman", 13))
-    file_label.grid(column=0, row=2)
-    file_link = Entry(hash_toplevel,width=30)   #
-    file_link.grid(column=1, row=2)
-    file_button = Button(hash_toplevel, text="Chọn tệp", command=browse)
-    file_button.grid(column=2, row=2)
-    def running_hash():
-        if  hash_plain_txt.get() != None:
-            hash_cipher_txt.delete(0,END)
-            hash_cipher_txt.insert(INSERT, hashing(function_hash.get()
-                                        , hash_plain_txt.get().encode()))
-        elif file_link.get() != None:
-            a_file= open(file_link.get(),'rb')
-            content = a_file.read()
-            hash_cipher_txt.delete(0,END)
-            hash_cipher_txt.insert(INSERT,hashing(function_hash, content))
+class SuccessMessage(tk.Toplevel):
+    def __init__(self, title):
+        tk.Toplevel.__init__(self)
+        self.title(title)
+        self.geometry('250x100')
+        self.success = tk.Label(self, text=title + ' thành công'
+                        ,font=("Times New Roman Bold", 13))
+        self.success.pack()
+        self.after(1000, lambda: self.destroy())
+class ErrorMessage(tk.Toplevel):
+    def __init__(self, signal, mode):
+        self.signal = signal
+        self.mode = mode
+        tk.Toplevel.__init__(self)
+        self.geometry('100x40')
+        if self.mode == 0:
+            padtext = '!!! Error '
         else:
-            pass
-    hash_button = Button(hash_toplevel, text="Băm", command=running_hash)
-    hash_button.grid(column=0, row=3)
-open_hash_window_button = Button(hashing_group, text="Băm"
-                     , font=("Times New Roman", 11), command=open_hash_window)
-open_hash_window_button.pack(side = RIGHT, fill = BOTH, expand="yes")
-#Digital_signature
-ds_group = LabelFrame(center_frame, text = "Chữ ký số"
+            padtext = 'Warning '
+        self.error = tk.Message(self, text=padtext + self.signal
+                        ,font=("Times New Roman Bold", 13), fg='#f22a13', width=700)
+        self.error.pack()
+        self.after(1000, lambda: self.destroy())
+class Affine(tk.Frame):
+    def __init__(self, parent):
+        self.parent = parent
+        tk.Frame.__init__(self)
+        self.intro_frame = tk.Frame(self)
+        self.intro_frame.pack()
+        self.intro = tk.Label(self.intro_frame, text='Cùng thử nghiệm chương trình mã hóa đơn giản (Affine) ^_^'
+                    ,font=('Times New Roman Bold', 13))
+        self.intro.pack()
+        self.inputs = tk.Frame(self)
+        self.plain_label = tk.Label(self.inputs, text='Nhập một đoạn văn bản (IN HOA): '
+                    ,font=('Times New Roman', 13))
+        self.plain_label.grid(column=0, row=0)
+        self.plain_text = tk.Entry(self.inputs,width=80)
+        self.plain_text.grid(column=1, row=0)
+        self.cipher_label = tk.Label(self.inputs, text='Đoạn kí tự đã mã hóa: '
+                     ,font=('Times New Roman', 13))
+        self.cipher_label.grid(column=0, row=1)
+        self.cipher_text = tk.Entry(self.inputs,width=80)
+        self.cipher_text.grid(column=1, row=1)
+        self.keys = tk.LabelFrame(self, text = "Nhập hai kí tự khóa (số nguyên tố)"
                     ,font=("Times New Roman", 13))
-ds_group.pack(side = TOP, expand = True, fill = BOTH)
-explain_ds_label = Label(ds_group, text="Ký chữ ký số cho tệp tin và kiểm tra tính toàn vẹn của một tệp tin có chữ ký"
+        self.key_label_a = tk.Label(self.keys, text="khóa a "
+                        ,font=("Times New Roman", 13))
+        self.key_label_a.pack(side = tk.LEFT)
+        self.key_a = tk.Entry(self.keys,width=4)    #
+        self.key_a.pack(side = tk.LEFT)
+        self.key_label_b = tk.Label(self.keys, text=" khóa b "
+                                ,font=("Times New Roman", 13))
+        self.key_label_b.pack(side = tk.RIGHT)
+        self.key_b = tk.Entry(self.keys,width=4)    #
+        self.key_b.pack(side = tk.RIGHT)
+        self.group = tk.LabelFrame(self)
+        self.encrypt_button = tk.Button(self.group, text="Mã hóa"
+                        ,font=("Times New Roman", 11), command=self.encrypt)
+        self.encrypt_button.pack(side = tk.LEFT)
+        self.decrypt_button = tk.Button(self.group, text="Giải mã"
+                                ,font=("Times New Roman", 11), command=self.decrypt)
+        self.decrypt_button.pack(side = tk.RIGHT)
+        self.inputs.pack()
+        self.keys.pack()
+        self.group.pack()
+        self.group['background']=bgcolor
+        self.inputs['background']=bgcolor
+        self.keys['background']=bgcolor
+        self.intro['background']=bgcolor
+        self.plain_label['background']=bgcolor
+        self.cipher_label['background']=bgcolor
+        self.key_label_a['background']=bgcolor
+        self.key_label_b['background']=bgcolor
+    def get_key_a(self):
+        return self.key_a.get()
+    def get_key_b(self):
+        return self.key_b.get()
+    def get_plain(self):
+        while True:
+            try:
+                if self.plain_text.get() == '':
+                    raise ValueError('Value Error')
+                plaintext = self.plain_text.get()
+                break
+            except ValueError:
+                ErrorMessage('02',0)
+                raise
+        return plaintext
+    def set_plain(self, text):
+        self.plain_text.delete(0, tk.END)
+        self.plain_text.insert(tk.INSERT,text)
+    def get_cipher(self):
+        while True:
+            try:
+                if self.cipher_text.get() == '':
+                    raise ValueError('Value Error')
+                ciphertext = self.cipher_text.get()
+                break
+            except ValueError:
+                ErrorMessage('03',0)
+                raise
+        return ciphertext
+    def set_cipher(self, text):
+        self.cipher_text.delete(0,tk.END)
+        self.cipher_text.insert(tk.INSERT,text)
+    def Char2Num(self, c): return ord(c)-65
+    def Num2Char(self, n): return chr(n+65)
+    def xgcd(self, a, m):						
+        temp = m						
+        x0, x1, y0, y1 = 1, 0, 0, 1
+        while m!=0:						
+            q, a, m = a // m, m, a % m
+            x0, x1 = x1, x0 - q * x1
+            y0, y1 = y1, y0 - q * y1
+        if x0 < 0: x0 = temp+x0
+        return x0
+    def is_not_prime(self, number):
+        if number < 1:
+            return True
+        elif number == 1:
+            return False
+        for i in range(2, int(math.sqrt(number) + 1)):
+            if number % i == 0:
+                return True
+        return False
+    def encrypt(self):
+        while True:
+            try:
+                a,b,m = int(self.get_key_a()), int(self.get_key_b()), 26
+                if self.is_not_prime(a) or self.is_not_prime(b):
+                    raise ValueError('Error')
+                break
+            except ValueError:
+                error_mes = ErrorMessage('04', 0)
+                raise
+        en_text = ""
+        plaintext = self.get_plain()
+        while True:
+            try:
+                for c in plaintext:
+                    if ord(c) < 65 or ord(c) > 90:
+                        raise ValueError('Error')
+                    e = (a * self.Char2Num(c)+b )%m
+                    en_text = en_text + self.Num2Char(e)
+                break
+            except ValueError:
+                error_mes = ErrorMessage('05', 0)
+                raise
+        self.set_cipher(en_text)
+        encrypt_mes = SuccessMessage('Mã hóa')
+    def decrypt(self):
+        while True:
+            try:
+                a,b,m = int(self.get_key_a()), int(self.get_key_b()), 26
+                if self.is_not_prime(a) or self.is_not_prime(b):
+                    raise ValueError('Error')
+                break
+            except ValueError:
+                error_mes = ErrorMessage('04', 0)
+                raise
+        de_text = ""
+        a1 = self.xgcd(a,m)
+        ciphertext = self.get_cipher()
+        while True:
+            try:
+                for c in ciphertext:
+                    if ord(c) < 65 or ord(c) > 90:
+                        raise ValueError('Error')
+                    e = (a1*(self.Char2Num(c) - b))%m
+                    de_text = de_text + self.Num2Char(e)
+                break
+            except ValueError:
+                error_mes = ErrorMessage('06', 0)
+                raise
+        self.set_plain(de_text)
+        decrypt_mes = SuccessMessage('Giải mã')
+class EncryptSYMWindow(tk.Toplevel):
+    def __init__(self, parent):
+        self.parent = parent
+        tk.Toplevel.__init__(self)
+        self.title("Chương trình mã hóa đối xứng")
+        self.geometry('600x360')
+        self.frame = tk.Frame(self)
+        self.frame.pack()
+        self.group = tk.LabelFrame(self)
+        self.group.pack(fill='x', expand=True)
+        self.plain_label = tk.Label(self.frame, text="Bản gốc: "
+                    ,font=("Times New Roman", 13))
+        self.plain_label.grid(column=0, row=0, sticky="W")
+        self.plain_text = tk.Entry(self.frame,width=50) 
+        self.plain_text.grid(column=1, row=0)
+        self.cipher_label = tk.Label(self.frame, text="Bản mã: "
+                             ,font=("Times New Roman", 13))
+        self.cipher_label.grid(column=0, row=1, sticky="W")
+        self.cipher_text = tk.Entry(self.frame,width=50)  
+        self.cipher_text.grid(column=1, row=1)
+        self.key_label = tk.Label(self.frame, text="Khóa: "
+                             ,font=("Times New Roman", 13))
+        self.key_label.grid(column=0, row=2, sticky="W")
+        self.key_text = tk.Entry(self.frame,width=50)
+        self.key_text.grid(column=1, row=2)
+        self.generate_key_button = tk.Button(self.frame, text="Sinh khóa", command=self.generate_key)
+        self.generate_key_button.grid(column=2, row=2)
+        self.link_label = tk.Label(self.frame, text="Đường dẫn: "
+                             ,font=("Times New Roman", 13))
+        self.link_label.grid(column=0, row=3, sticky="W")
+        self.link_text = tk.Entry(self.frame,width=50) 
+        self.link_text.grid(column=1, row=3)
+        self.link_button = tk.Button(self.frame, text="Chọn tệp", command=self.browse)
+        self.link_button.grid(column=2, row=3)
+        if self.parent.get_mode() == 1:
+            self.iv_label = tk.Label(self.frame, text="IV: "
+                             ,font=("Times New Roman", 13))
+            self.iv_label.grid(column=0, row=4, sticky="W")
+            self.iv_text = tk.Entry(self.frame,width=50)   #
+            self.iv_text.grid(column=1, row=4)
+            self.generate_iv_button = tk.Button(self.frame, text="Sinh iv", command=self.generate_iv)
+            self.generate_iv_button.grid(column=2, row=4)
+        self.encrypt_button = tk.Button(self, text="Mã hóa", command=self.encrypt)
+        self.encrypt_button.pack()
+        self.file_val = tk.IntVar()
+        self.file_check = tk.Checkbutton(self, text = "Mã hóa tệp tin"
+                                    ,variable = self.file_val ,onvalue = 1
+                                    ,offvalue = 0, height=5,width = 20)
+        self.file_check.pack()
+        if self.parent.get_func() == 0 and self.parent.get_mode() == 0:
+            self.mes = tk.Message(self.group, text=
+                "!!! Thuật toán DES không còn an toàn và đã bị crack thành công\n"
+                "!!! Chế độ ECB có nguy cơ nhận ra dữ liệu khi hai khối mã hóa giống nhau\n"
+                "* Chỉ nên sử dụng chế độ ECB khi mã hóa sử dụng một lần như mã xác nhận"
+                        ,font=("Times New Roman", 13), width=700)
+            self.mes.pack()
+        elif self.parent.get_func() == 0 and self.parent.get_mode() == 1:
+            self.mes = tk.Message(self.group, text=
+                "!!! Thuật toán DES không còn an toàn và đã bị crack thành công\n"
+                "* Chế độ CBC, là chế độ bảo mật cao sao khi nhập thêm iv (init. vector) biến đổi khóa"
+                        ,font=("Times New Roman", 13), width=700)
+            self.mes.pack()
+        elif self.parent.get_func() == 1 and self.parent.get_mode() == 0:
+            self.mes = tk.Message(self.group, text=
+                "Thuật toán AES là kiểu mã hóa đối xứng đang phổ biến\n"
+                "!!! Chế độ ECB có nguy cơ nhận ra dữ liệu khi hai khối mã hóa giống nhau\n"
+                "* Chỉ nên sử dụng chế độ ECB khi mã hóa sử dụng một lần như mã xác nhận"
+                        ,font=("Times New Roman", 13), width=700)
+            self.mes.pack()
+        else:
+            self.mes = tk.Message(self.group, text=
+                "Thuật toán AES là kiểu mã hóa đối xứng đang phổ biến\n"
+                "* Chế độ CBC, là chế độ bảo mật cao sao khi nhập thêm iv (init. vector) biến đổi khóa"
+                        ,font=("Times New Roman", 13), width=700)
+            self.mes.pack()
+        self.back = tk.Button(self, text="Trở lại trang chính <---", command=self.back)
+        self.back.pack(anchor='w', side=tk.BOTTOM)
+    def set_key(self, text):
+        self.key_text.delete(0,tk.END)
+        self.key_text.insert(tk.INSERT, text.hex())
+    def get_key(self):
+        return self.key_text.get()
+    def generate_key(self):
+        if self.parent.get_func() == 0:
+            self.set_key(Random.new().read(DES.block_size))
+        else:
+            self.set_key(Random.new().read(AES.block_size))
+    def set_iv(self, text):
+        self.iv_text.delete(0,tk.END)
+        self.iv_text.insert(tk.INSERT, text.hex())
+    def generate_iv(self):
+        if self.parent.get_func() == 0:
+            self.set_iv(Random.new().read(DES.block_size))
+        else:
+            self.set_iv(Random.new().read(AES.block_size))
+    def get_link(self):
+        while True:
+            try:
+                if self.link_text.get() == '':
+                    raise ValueError('Value Error')
+                linktext = self.link_text.get()
+                break
+            except ValueError:
+                error_message('05',0)
+                raise
+        return linktext
+    def set_link(self, text):
+        self.link_text.delete(0,tk.END)
+        self.link_text.insert(tk.INSERT, text)
+    def encrypt(self):
+        while True:
+            try:
+                if self.get_key() == '':
+                    raise SyntaxError('Error')
+                key = bytearray.fromhex(self.get_key())
+                break
+            except SyntaxError:
+                ErrorMessage('01', 0)
+                raise
+            except ValueError:
+                ErrorMessage('03', 0)
+                raise
+        if self.parent.get_func() == 0:
+            if self.file_val.get() == 1:
+                ErrorMessage('01', 1)
+            else:
+                encrypt_DES(key)
+                SuccessMessage('Mã hóa')
+        else:
+            if self.file_val.get() == 1:
+                while True:
+                    try:
+                        if self.get_link() == '':
+                            raise ValueError('Value Error')
+                        linktext = self.get_link()
+                        break
+                    except ValueError:
+                        error_message('05',0)
+                        raise
+                encrypt_file(linktext, key)
+                head, tail = os.path.split(linktext)
+                success_message('Mã hóa tệp ' + tail + ' thành tệp tin ' + tail + '.enc')
+            else:
+                encrypt_AES(key)
+                success_message('Mã hóa')
+    def browse(self):
+        pass
+    def back(self):
+        root.deiconify()
+        self.destroy()
+class DecryptSYMWindow(tk.Toplevel):
+    def __init__(self, parent):
+        self.parent = parent
+        tk.Toplevel.__init__(self)
+        self.title("Chương trình mã hóa đối xứng")
+        self.geometry('600x360')
+        self.frame = tk.Frame(self)
+        self.frame.pack()
+        self.group = tk.LabelFrame(self)
+        self.group.pack(fill='x', expand=True)
+        self.cipher_label = tk.Label(self.frame, text="Bản mã: "
+                             ,font=("Times New Roman", 13))
+        self.cipher_label.grid(column=0, row=0, sticky="W")
+        self.cipher_text = tk.Entry(self.frame,width=50)  
+        self.cipher_text.grid(column=1, row=0)
+        self.plain_label = tk.Label(self.frame, text="Bản gốc: "
+                    ,font=("Times New Roman", 13))
+        self.plain_label.grid(column=0, row=1, sticky="W")
+        self.plain_text = tk.Entry(self.frame,width=50) 
+        self.plain_text.grid(column=1, row=1)
+        self.key_label = tk.Label(self.frame, text="Khóa: "
+                             ,font=("Times New Roman", 13))
+        self.key_label.grid(column=0, row=2, sticky="W")
+        self.key_text = tk.Entry(self.frame,width=50)
+        self.key_text.grid(column=1, row=2)
+        self.link_label = tk.Label(self.frame, text="Đường dẫn: "
+                             ,font=("Times New Roman", 13))
+        self.link_label.grid(column=0, row=3, sticky="W")
+        self.link_text = tk.Entry(self.frame,width=50) 
+        self.link_text.grid(column=1, row=3)
+        self.link_button = tk.Button(self.frame, text="Chọn tệp", command=self.browse)
+        self.link_button.grid(column=2, row=3)
+        if self.parent.get_mode() == 1:
+            self.iv_label = tk.Label(self.frame, text="IV: "
+                             ,font=("Times New Roman", 13))
+            self.iv_label.grid(column=0, row=4, sticky="W")
+            self.iv_text = tk.Entry(self.frame,width=50)
+            self.iv_text.grid(column=1, row=4)
+        self.encrypt_button = tk.Button(self, text="Giải hóa", command=self.encrypt)
+        self.encrypt_button.pack()
+        self.file_val = tk.IntVar()
+        self.file_check = tk.Checkbutton(self, text = "Giải mã tệp tin"
+                                    ,variable = self.file_val ,onvalue = 1
+                                    ,offvalue = 0, height=5,width = 20)
+        self.file_check.pack()
+        if self.parent.get_func() == 0 and self.parent.get_mode() == 0:
+            self.mes = tk.Message(self.group, text=
+                "!!! Thuật toán DES không còn an toàn và đã bị crack thành công\n"
+                "!!! Chế độ ECB có nguy cơ nhận ra dữ liệu khi hai khối mã hóa giống nhau\n"
+                "* Chỉ nên sử dụng chế độ ECB khi mã hóa sử dụng một lần như mã xác nhận"
+                        ,font=("Times New Roman", 13), width=700)
+            self.mes.pack()
+        elif self.parent.get_func() == 0 and self.parent.get_mode() == 1:
+            self.mes = tk.Message(self.group, text=
+                "!!! Thuật toán DES không còn an toàn và đã bị crack thành công\n"
+                "* Chế độ CBC, là chế độ bảo mật cao sao khi nhập thêm iv (init. vector) biến đổi khóa"
+                        ,font=("Times New Roman", 13), width=700)
+            self.mes.pack()
+        elif self.parent.get_func() == 1 and self.parent.get_mode() == 0:
+            self.mes = tk.Message(self.group, text=
+                "Thuật toán AES là kiểu mã hóa đối xứng đang phổ biến\n"
+                "!!! Chế độ ECB có nguy cơ nhận ra dữ liệu khi hai khối mã hóa giống nhau\n"
+                "* Chỉ nên sử dụng chế độ ECB khi mã hóa sử dụng một lần như mã xác nhận"
+                        ,font=("Times New Roman", 13), width=700)
+            self.mes.pack()
+        else:
+            self.mes = tk.Message(self.group, text=
+                "Thuật toán AES là kiểu mã hóa đối xứng đang phổ biến\n"
+                "* Chế độ CBC, là chế độ bảo mật cao sao khi nhập thêm iv (init. vector) biến đổi khóa"
+                        ,font=("Times New Roman", 13), width=700)
+            self.mes.pack()
+        self.back = tk.Button(self, text="Trở lại trang chính <---", command=self.back)
+        self.back.pack(anchor='w', side=tk.BOTTOM)
+    def encrypt(self):
+        pass
+    def browse(self):
+        pass
+    def back(self):
+        root.deiconify()
+        self.destroy()
+class Symmetric(tk.Frame):
+    def __init__(self, parent):
+        self.parent = parent
+        tk.Frame.__init__(self)
+        self.group = tk.LabelFrame(self, text = "Mã hóa đối xứng"
+                        ,font=("Times New Roman", 13))
+        self.group.pack(side = tk.TOP, fill="both", expand="yes")
+        self.explain = tk.Label(self.group, text="Ta dùng đồng thời cùng một key để mã hóa và giải mã"
+                                ,font=("Times New Roman", 13))
+        self.explain.pack()
+        self.func_group = tk.LabelFrame(self.group
+                            , text = "Chọn thuật toán",font=("Times New Roman", 13))
+        self.func_group.pack(side = tk.LEFT, fill="both", expand="yes")
+        self.func_val = tk.IntVar()                     #
+        self.des_func = tk.Radiobutton(self.func_group, text = "DES"
+                    ,font=("Times New Roman", 11), variable = self.func_val, value = 0)
+        self.des_func.pack(anchor=tk.W)
+        self.aes_func = tk.Radiobutton(self.func_group, text = "AES"
+                    ,font=("Times New Roman", 11), variable = self.func_val, value = 1)
+        self.aes_func.pack(anchor=tk.W)
+        
+        self.mode_group = tk.LabelFrame(self.group, text = "Chọn chế độ mã hóa"
+                                ,font=("Times New Roman", 13))
+        self.mode_group.pack(side = tk.LEFT, fill="both", expand="yes")
+        self.mode_val = tk.IntVar()                         #
+        self.ecb = tk.Radiobutton(self.mode_group, text = "ECB (chế độ sách mã điện tử)"
+                        ,font=("Times New Roman", 11), variable = self.mode_val, value = 0)
+        self.ecb.pack(anchor=tk.W)
+        self.cbc = tk.Radiobutton(self.mode_group, text = "CBC (chế độ xích liên kết khối)"
+                        ,font=("Times New Roman", 11), variable = self.mode_val, value = 1)
+        self.cbc.pack(anchor=tk.W)
+        encrypt_button = tk.Button(self.group, text="Mã hóa"
+                                    ,font=("Times New Roman", 11), command=self.encrypt)
+        decrypt_button = tk.Button(self.group, text="Giải mã"
+                            ,font=("Times New Roman", 11), command=self.decrypt)
+        decrypt_button.pack(side = tk.RIGHT)
+        encrypt_button.pack(side = tk.RIGHT)
+        self.group['background']=bgcolor
+        self.explain['background']=bgcolor
+        self.des_func['background']=bgcolor
+        self.aes_func['background']=bgcolor
+        self.cbc['background']=bgcolor
+        self.ecb['background']=bgcolor
+        self.mode_group['background']=bgcolor
+        self.func_group['background']=bgcolor
+    def get_func(self):
+        return self.func_val.get()
+    def get_mode(self):
+        return self.mode_val.get()
+    def encrypt(self):
+        EncryptSYMWindow(self)
+        root.withdraw()
+    def decrypt(self):
+        DecryptSYMWindow(self)
+        root.withdraw()
+class Asymmetric(tk.Frame):
+    def __init__(self, parent):
+        self.parent = parent
+        tk.Frame.__init__(self)
+        self.group = tk.LabelFrame(self, text = "Mã hóa bất đối xứng"
+                                ,font=("Times New Roman", 13))
+        self.group.pack(side = tk.TOP, fill="both", expand="yes")
+        self.explain = tk.Label(self.group, text="Ta dùng một key để mã hóa và một key khác để giải mã"
+                                ,font=("Times New Roman", 13))
+        self.explain.pack()
+        self.func_group = tk.LabelFrame(self.group, borderwidth = 0, highlightthickness = 0, text = "Chọn thuật toán",font=("Times New Roman", 13))
+        self.func_group.pack(side = tk.LEFT)
+        self.func_val = tk.IntVar()                     #
+        self.diffie_hellman_func = tk.Radiobutton(self.func_group, text = "Diffie–Hellman"
+                        ,font=("Times New Roman", 11), variable = self.func_val, value = 0)
+        self.diffie_hellman_func.pack(anchor=tk.W)
+        self.rsa_func = tk.Radiobutton(self.func_group, text = "RSA"
+                        ,font=("Times New Roman", 11), variable = self.func_val, value = 1)
+        self.rsa_func.pack(anchor=tk.W)
+        self.encrypt_button = tk.Button(self.group, text="Mã hóa"
+                        ,font=("Times New Roman", 11), command=self.encrypt)
+        self.decrypt_button = tk.Button(self.group, text="Giải mã"
+                        ,font=("Times New Roman", 11), command=self.decrypt)
+        self.decrypt_button.pack(side = tk.RIGHT)
+        self.encrypt_button.pack(side = tk.RIGHT)
+        self.group['background']=bgcolor
+        self.explain['background']=bgcolor
+        self.diffie_hellman_func['background']=bgcolor
+        self.rsa_func['background']=bgcolor
+        self.func_group['background']=bgcolor
+    def encrypt(self):
+        asym_encrypt_toplevel = tk.Toplevel()
+        asym_encrypt_toplevel.title('Mã hóa')
+        asym_encrypt_toplevel.geometry('600x500')
+    def decrypt(self):
+        asym_decrypt_toplevel = tk.Toplevel()
+        asym_decrypt_toplevel.title('Giải mã')
+        asym_decrypt_toplevel.geometry('600x500')
+class HashWindow(tk.Toplevel):
+    def __init__(self, parent):
+        self.parent = parent
+        tk.Toplevel.__init__(self)
+        self.title('Băm')
+        self.geometry('600x200')
+        self.label = tk.Label(self, text="Nhập một đoạn văn bản : "
+                    ,font=("Times New Roman", 13))
+        self.label.grid(column=0, row=0)
+        self.plain_text = tk.Entry(self,width=50)   #
+        self.plain_text.grid(column=1, row=0)
+        self.cipher_label = tk.Label(self, text="Đoạn kí tự đã băm: "
+                             ,font=("Times New Roman", 13))
+        self.cipher_label.grid(column=0, row=1)
+        self.cipher_text = tk.Entry(self,width=50)   #
+        self.cipher_text.grid(column=1, row=1)
+        self.file_label = tk.Label(self, text="File:",font=("Times New Roman", 13))
+        self.file_label.grid(column=0, row=2)
+        self.link_text = tk.Entry(self,width=30)   #
+        self.link_text.grid(column=1, row=2)
+        self.file_button = tk.Button(self, text="Chọn tệp", command=self.browse)
+        self.file_button.grid(column=2, row=2)
+        self.hash_button = tk.Button(self, text="Băm", command=self.check_file)
+        self.hash_button.grid(column=1, row=3)
+        self.file_val = tk.IntVar()
+        self.file_check = tk.Checkbutton(self, text = "Băm từ tệp tin"
+                                    ,variable = self.file_val ,onvalue = 1
+                                    ,offvalue = 0, height=5,width = 20)
+        self.file_check.grid(column=0, row=3)
+        self.back = tk.Button(self, text="Trở lại trang chính <---", command=self.back)
+        self.back.grid(column=0, row=4)
+    def back(self):
+        root.deiconify()
+        self.destroy()
+    def set_link(self, text):
+        self.link_text.delete(0,tk.END)
+        self.link_text.insert(tk.INSERT, text)
+    def get_link(self):
+        while True:
+            try:
+                if self.link_text.get() == '':
+                    raise ValueError('Value Error')
+                linktext = self.link_text.get()
+                break
+            except ValueError:
+                error_message = ErrorMessage('xx',0)
+                raise
+        return linktext
+    def set_cipher(self, text):
+        self.cipher_text.delete(0,tk.END)
+        self.cipher_text.insert(tk.INSERT, text)
+    def get_plain(self):
+        while True:
+            try:
+                if self.plain_text.get() == '':
+                    raise ValueError('Value Error')
+                plaintext = self.plain_text.get()
+                break
+            except ValueError:
+                error_message = ErrorMessage('xx',0)
+                raise
+        return plaintext
+    def check_file(self):
+        if self.file_val.get() == 0:
+            self.set_cipher(hashing(self.parent.get_func_val(), self.get_plain().encode()))
+        else:
+            while True:
+                try:
+                    with open(self.get_link(), 'rb') as fo:
+                        content = fo.read()
+                    break
+                except FileNotFoundError:
+                    error_message = ErrorMessage('xx', 0)
+                    raise
+            self.set_cipher(hashing(self.parent.get_func_val(), content))
+    def browse(self):
+        self.set_link(browse_file())
+class Hashing(tk.Frame):
+    def __init__(self, parent):
+        self.parent = parent
+        tk.Frame.__init__(self)
+        self.group = tk.LabelFrame(self, text = "Băm"
+                            ,font=("Times New Roman", 13))
+        self.group.pack(side = tk.TOP, expand = True, fill = tk.BOTH)
+        self.explain = tk.Label(self.group, text="Ta băm một đoạn kí tự hoặc file ra một đoạn kí tự bất kì, không thể giải mã"
+                                 ,font=("Times New Roman", 13))
+        self.explain.pack()
+        self.func_group = tk.LabelFrame(self.group, borderwidth = 0, highlightthickness = 0, text = "Chọn thuật toán"
+                                ,font=("Times New Roman", 13))
+        self.func_group.pack(side = tk.LEFT, fill="both", expand="yes")
+        self.func_val = tk.IntVar()
+        self.md5_func = tk.Radiobutton(self.func_group, text = "Hash MD5"
+                    ,font=("Times New Roman", 11), variable = self.func_val, value = 0)
+        self.md5_func.grid(row=0, column=0, sticky="W")
+        self.sha1_func = tk.Radiobutton(self.func_group, text = "Hash SHA1"
+                    ,font=("Times New Roman", 11), variable = self.func_val, value = 1)
+        self.sha1_func.grid(row=0, column=1, sticky="W")
+        self.sha256_func = tk.Radiobutton(self.func_group, text = "Hash SHA256"
+                    ,font=("Times New Roman", 11), variable = self.func_val, value = 2)
+        self.sha256_func.grid(row=1, column=0, sticky="W")
+        self.sha224_func = tk.Radiobutton(self.func_group, text = "Hash SHA224"
+                    ,font=("Times New Roman", 11), variable = self.func_val, value = 3)
+        self.sha224_func.grid(row=1, column=1, sticky="W")
+        self.sha384_func = tk.Radiobutton(self.func_group, text = "Hash SHA384"
+                    ,font=("Times New Roman", 11), variable = self.func_val, value = 4)
+        self.sha384_func.grid(row=2, column=0, sticky="W")
+        self.sha512_func = tk.Radiobutton(self.func_group, text = "Hash SHA512"
+                    ,font=("Times New Roman", 11), variable = self.func_val, value = 5)
+        self.sha512_func.grid(row=2, column=1, sticky="W")
+        self.open_window_button = tk.Button(self.group, text="Băm"
+                     , font=("Times New Roman", 11), command=self.open_window)
+        self.open_window_button.pack(side = tk.RIGHT, expand = True, fill = tk.BOTH)
+        self.group['background']=bgcolor
+        self.explain['background']=bgcolor
+        self.md5_func['background']=bgcolor
+        self.sha1_func['background']=bgcolor
+        self.sha256_func['background']=bgcolor
+        self.sha224_func['background']=bgcolor
+        self.sha384_func['background']=bgcolor
+        self.sha512_func['background']=bgcolor
+        self.func_group['background']=bgcolor
+    def open_window(self):
+        HashWindow(self)
+        root.withdraw()
+    def get_func_val(self):
+        return self.func_val.get()
+class DigitalSignature(tk.Frame):
+    def __init__(self, parent):
+        self.parent = parent
+        tk.Frame.__init__(self)
+        self.group = tk.LabelFrame(self)
+        self.group.pack(side = tk.TOP, expand = True, fill = tk.BOTH)
+        self.explain = tk.Label(self.group, text="Ký chữ ký số cho tệp tin và kiểm tra tính toàn vẹn của một tệp tin có chữ ký"
                          ,font=("Times New Roman", 13))
-explain_ds_label.pack()
-def create_digital_signature():
-    create_digital_signature_toplevel = Toplevel()
-    create_digital_signature_toplevel.title('Tạo chữ ký')
-    create_digital_signature_toplevel.geometry('600x500')
-def verify_digital_signature():
-    verify_digital_signature_toplevel = Toplevel()
-    verify_digital_signature_toplevel.title('Xác minh nguồn gốc tệp tin')
-    verify_digital_signature_toplevel.geometry('600x500')
-create_ds_button = Button(ds_group, text="Tạo chữ ký"
-                          ,font=("Times New Roman", 11),command=create_digital_signature)
-create_ds_button.pack(side = LEFT, fill="both", expand="yes")
-verify_ds_button = Button(ds_group, text="Xác minh nguồn gốc tệp tin"
-                          ,font=("Times New Roman", 11),command=verify_digital_signature)
-verify_ds_button.pack(side = RIGHT, fill="both", expand="yes")
-############
-welcome_label = Label(bottom_frame, text="Chào mừng bạn đến với chương trình mã hóa đơn giản ver 1.2020"
+        self.explain.pack()
+        self.digital_signature_button = tk.Button(self.group, text="Tạo chữ ký"
+                        ,font=("Times New Roman", 11),command=self.create_ds)
+        self.digital_signature_button.pack(side = tk.LEFT, expand = True, fill = tk.BOTH)
+        self.digital_certificate_button = tk.Button(self.group, text="Tạo chứng thư"
+                        ,font=("Times New Roman", 11),command=self.create_dc)
+        self.digital_certificate_button.pack(side = tk.LEFT, expand = True, fill = tk.BOTH)
+        self.verify_button = tk.Button(self.group, text="Xác minh nguồn gốc tệp tin"
+                        ,font=("Times New Roman", 11),command=self.verify)
+        self.verify_button.pack(side = tk.RIGHT, expand = True, fill = tk.BOTH)
+        self.explain['background']=bgcolor
+        self.group['background']=bgcolor
+    def create_ds():
+        create_digital_signature_toplevel = tk.Toplevel()
+        create_digital_signature_toplevel.title('Tạo chữ ký')
+        create_digital_signature_toplevel.geometry('600x500')
+    def create_dc():
+        create_digital_signature_toplevel = tk.Toplevel()
+        create_digital_signature_toplevel.title('Tạo chữ ký')
+        create_digital_signature_toplevel.geometry('600x500')
+    def verify():
+        verify_digital_signature_toplevel = tk.Toplevel()
+        verify_digital_signature_toplevel.title('Xác minh nguồn gốc tệp tin')
+        verify_digital_signature_toplevel.geometry('600x500')
+class Center(tk.Frame):
+    def __init__(self, parent):
+        self.parent = parent
+        tk.Frame.__init__(self)
+        self.symmetric  = Symmetric(self)
+        self.asymmetric = Asymmetric(self)
+        self.hashing = Hashing(self)
+        self.digitalsignature = DigitalSignature(self)
+        self.symmetric.pack(side = tk.TOP, fill="both", expand="yes")
+        self.asymmetric.pack(side = tk.TOP, fill="both", expand="yes")
+        self.hashing.pack(side = tk.TOP, fill="both", expand="yes")
+        self.digitalsignature.pack(side = tk.TOP, fill="both", expand="yes")
+class Menu(tk.Toplevel):
+    def __init__(self, parent):
+        self.parent = parent
+        tk.Toplevel.__init__(self)
+        self.title('Bảng tra cứu lỗi')
+        self.geometry('500x400')
+        self.canvas = tk.Canvas(self)
+        self.scrolling_y = tk.Scrollbar(self, orient="vertical", command=self.canvas.yview)
+        self.frame = tk.Frame(self.canvas)
+        self.mes = tk.Message(self.frame, text=
+            "Lỗi 01: Chưa nhập khóa\n\n"
+            "Lỗi 02: Chưa nhập bản gốc\n\n"
+            "Lỗi 03: Chưa nhập bản mã\n\n"
+                              
+            "Lỗi xx: Chưa nhập bảng mã\n\n"
+            "Lỗi xx: Chưa nhập đường dẫn tệp tin\n\n"
+            "Lỗi xx: Không tìm thấy tệp tin hay đường dẫn\n\n"
+            "Lỗi xx: Bảng mã hoặc khóa không đúng\n\n"
+            "Lỗi xx: Không giải mã được tệp tin này\n\n"
+            "Lỗi xx: Yêu cầu kiểm tra lại độ dài bảng mã\n\n"                  
+            "\n***\nCác lỗi khi dùng mã hóa affine:\n\n"
+            "Lỗi 04: Không được bỏ trống ô khóa nào, mỗi ô khóa phải là số nguyên tố\n\n"                  
+            "Lỗi 05: Bản gốc phải là kí tự ASCII in hoa\n\n"
+            "Lỗi 06: Bản mã phải là kí tự ASCII in hoa\n\n"
+                              
+            "\n***\nCác lỗi khi dùng mã hóa đối xứng:\n\n"
+            "Cảnh báo 01: Chương trình không sử dụng kiểu mã hóa DES để mã hóa và giải mã tệp do vấn đề bảo mật\n\n"
+            "Lỗi xx: Yêu cầu kiểm tra lại độ dài khóa\n\n"
+            "Lỗi xx: Chưa nhập iv, bạn bắt buộc nhập iv ở chế độ CBC\n\n"
+            "Lỗi xx: Đang sử dụng mã khóa của kiểu mã hóa khác (thường gặp ở chế độ ECB)\n\n"
+            "Lỗi xx: Đang sử dụng mã khóa hoặc iv của kiểu mã hóa khác (thường gặp ở chế độ CBC)\n\n"
+            "\n***\nCác lỗi khi dùng mã hóa bất đối xứng:\n\n"
+
+            "\n***\nCác lỗi khi băm:\n\n"
+
+            "\n***\nCác lỗi khi tạo hoặc xác nhận chữ kí số:\n\n" 
+                        ,font=("Times New Roman", 13), width=450)
+        self.mes.pack(anchor="w")
+        self.canvas.create_window(0, 0, anchor='nw', window=self.frame)
+        self.canvas.update_idletasks()
+        self.canvas.configure(scrollregion=self.canvas.bbox('all'), 
+                         yscrollcommand=self.scrolling_y.set)
+                         
+        self.canvas.pack(fill='both', expand=True, side='left')
+        self.scrolling_y.pack(fill='y', side='right')
+class Welcome(tk.Frame):
+    def __init__(self, parent):
+        self.parent = parent
+        tk.Frame.__init__(self)
+        self.welcome = tk.Label(self, text="Chào mừng bạn đến với chương trình mã hóa đơn giản ver 1.2020"
                       ,font=("Times New Roman", 12))
-welcome_label.pack()
-def set_bgcolor(bgcolor):
+        self.welcome.pack(side = tk.LEFT)
+        self.menu = tk.Button(self, text="! Tra cứu lỗi", fg='#f22a13'
+                        ,font=("Times New Roman", 11),command=self.open)
+        self.menu.pack(side = tk.RIGHT)
+    def open(self):
+        menu = Menu(self)
+class MainWindow(tk.Frame):
+    def __init__(self, parent):
+        self.parent = parent
+        tk.Frame.__init__(self)
+        self.affine = Affine(self)
+        self.affine.pack(side = tk.TOP, fill="both", expand="yes")
+        self.center = Center(self)
+        self.center.pack()
+        self.welcome = Welcome(self)
+        self.welcome.pack(side = tk.BOTTOM, fill="both", expand="yes")
+        self.affine['background']=bgcolor
+        self.welcome['background']=bgcolor
+def hashing(func, content):
+    if func == 0:
+        result = MD5.new(content)
+        return result.hexdigest()
+    if func == 1:
+        result = SHA1.new(content)
+        return result.hexdigest()
+    if func == 2:
+        return SHA256.new(content).hexdigest()
+    if func == 3:
+        result = SHA224.new(content)
+        return result.hexdigest()
+    if func == 4:
+        result = SHA384.new(content)
+        return result.hexdigest()
+    if func == 5:
+        result = SHA512.new(content)
+        return result.hexdigest()
+def browse_file():
+    return tk.filedialog.askopenfilename(initialdir="D:/",
+                    title="Open", filetypes=(("Text files", "*.txt"),
+                                             ("Image files", "*.jpg"),
+                                             ("Encoded files", "*.enc"),
+                                             ("All files", "*.*")))
+def set_windowcolor(color_in_hex):
+    global bgcolor
+    bgcolor = color_in_hex
+def main():
+    set_windowcolor('#cedbd2')
+    global root
+    root = tk.Tk()
+    root.title("Chương trình mã hóa đơn giản")
+    root.geometry('800x700')
     root['background']=bgcolor
-    intro_text_frame['background']=bgcolor
-    intro_label['background']=bgcolor
-    plain_label['background']=bgcolor
-    #plain_txt['background']=bgcolor
-    cipher_label['background']=bgcolor
-    #cipher_txt['background']=bgcolor
-    top_frame['background']=bgcolor
-    affine_group['background']=bgcolor
-    affine_key_Label0['background']=bgcolor
-    affine_key_Label1['background']=bgcolor
-    symmetric_group['background']=bgcolor
-    explain_sym_label['background']=bgcolor
-    func_sym_group['background']=bgcolor
-    des_func['background']=bgcolor
-    aes_func['background']=bgcolor
-    mode_sym_group['background']=bgcolor
-    ecb_mode['background']=bgcolor
-    cbc_mode['background']=bgcolor
-    asymmetric_group['background']=bgcolor
-    explain_asym_label['background']=bgcolor
-    func_asym_group['background']=bgcolor
-    diffie_hellman_func['background']=bgcolor
-    rsa_func['background']=bgcolor
-    hashing_group['background']=bgcolor
-    explain_hash_label['background']=bgcolor
-    func_hash_group['background']=bgcolor
-    md5_func['background']=bgcolor
-    sha1_func['background']=bgcolor
-    sha256_func['background']=bgcolor
-    sha224_func['background']=bgcolor
-    sha384_func['background']=bgcolor
-    sha512_func['background']=bgcolor
-    ds_group['background']=bgcolor
-    explain_ds_label['background']=bgcolor
-    welcome_label['background']=bgcolor 
-set_bgcolor('#cedbd2')
-root.mainloop()
+    app = MainWindow(root)
+    root.mainloop()
+if __name__ == '__main__':
+    main()

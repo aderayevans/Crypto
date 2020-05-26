@@ -1,29 +1,29 @@
-import hashlib 
+from Crypto.Hash import SHA256, MD5, SHA1, SHA224, SHA384, SHA512
 
 def hashing(func, str):
     if func == 0:
-        result = hashlib.md5(str) 
+        result = MD5.new(str)
         return result.hexdigest()
     if func == 1:
-        result = hashlib.sha1(str) 
+        result = SHA1.new(str)
         return result.hexdigest()
     if func == 2:
-        return hashlib.sha256(str).hexdigest()
+        return SHA256.new(str).hexdigest()
     if func == 3:
-        result = hashlib.sha224(str) 
+        result = SHA224.new(str)
         return result.hexdigest()
     if func == 4:
-        result = hashlib.sha384(str) 
+        result = SHA384.new(str)
         return result.hexdigest()
     if func == 5:
-        result = hashlib.sha512(str) 
+        result = SHA512.new(str)
         return result.hexdigest()
 str = "Quang"
 #hashing('sha256', str.encode())
 print(hashing(0, str.encode()))
 print ("\r")
 
-a_file = open("test.txt", "rb")
+a_file = open("signature.sig", "rb")
 content = a_file.read()
-print(hashing(2, content))
+print(hashing(5, content))
 a_file.close()
