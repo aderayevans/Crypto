@@ -12,6 +12,7 @@ from Crypto.Cipher import PKCS1_v1_5
 from Crypto.Signature import PKCS1_v1_5 as PKCS1_v1_5_2
 from Crypto.Signature import PKCS1_PSS
 import datetime
+import pickle
 import binascii
 import base64
 import os
@@ -1484,6 +1485,7 @@ class SigningWindow(tk.Toplevel):
         save_file(signature, 'wb', 'Save as',
                   (("All files", "*.*"),
                    ("PEM files", "*.sig")), ".sig")
+        SuccessMessage('Tạo chữ ký')
     def browse_file(self):
         self.set_link_file(browse_file())
     def browse_key(self):
@@ -1589,8 +1591,7 @@ class CertificationWindow(tk.Toplevel):
     def get_publickey(self):
         while True:
             try:
-                #with open(self.get_link(), 'rb') as fo:
-                with open('rsapub.der', 'rb') as fo:
+                with open(self.get_link(), 'rb') as fo:
                     key = fo.read()
                 break
             except FileNotFoundError:
@@ -1613,16 +1614,15 @@ class CertificationWindow(tk.Toplevel):
         return 'Viettel-CA'
     def create(self):
         certification = DigitalCertification()
-        #certification.set_name(self.get_name())
-        certification.set_name('Quang')
+        certification.set_name(self.get_name())
         certification.set_serial(self.get_serial())
         certification.set_period(self.get_period())
         certification.set_authority(self.get_authority())
         certification.set_publickey(self.get_publickey())
-        certification.encode()
-        save_file(certification, 'wb', 'Save as',
+        save_object(certification, 'wb', 'Save as',
                   (("All files", "*.*"),
                    ("Digital Certification files", "*.dcq")), ".dcq")
+        SuccessMessage('Tạo chứng thư')
     def browse_file(self):
         self.set_link(browse_file())
     def back(self):
@@ -1643,7 +1643,7 @@ class VerifyingWindow(tk.Toplevel):
         self.link_text_file.grid(column=1, row=0)
         self.link_button_file = tk.Button(self.frame, text="Chọn tệp", command=self.browse_file)
         self.link_button_file.grid(column=2, row=0)
-        self.link_label_key = tk.Label(self.frame, text="Đường dẫn khóa công khai: "
+        self.link_label_key = tk.Label(self.frame, text="Đường dẫn chứng thư: "
                                        , font=("Times New Roman", 13))
         self.link_label_key.grid(column=0, row=1, sticky="W")
         self.link_text_key = tk.Entry(self.frame, width=50)
@@ -1748,7 +1748,9 @@ class VerifyingWindow(tk.Toplevel):
         self.link_text_sig.insert(tk.INSERT, text)
     def verify_file(self):
         signature = open(self.get_link_sig(), "rb").read()
-        key = RSA.importKey(open(self.get_link_key(), "rb").read())
+        with open(self.get_link_key(), 'rb') as input:
+            the_object = pickle.load(input)
+        key = RSA.importKey(the_object.get_publickey())
         plaintext = open(self.get_link_file(), "rb").read()
         if self.scheme_val.get() == 0:
             verifier = PKCS1_v1_5_2.new(key)
@@ -1922,6 +1924,14 @@ def save_file(content, _mode, _title, _filetypes, _defaultextension):
     if f is None:
         return
     f.write(content)
+    f.close()
+    return 0
+def save_object(the_object, _mode, _title, _filetypes, _defaultextension):
+    f = tk.filedialog.asksaveasfile(mode=_mode, initialdir="D:/",
+                    title=_title, filetypes = _filetypes, defaultextension = _defaultextension)
+    if f is None:
+        return
+    pickle.dump(the_object, f, pickle.HIGHEST_PROTOCOL)
     f.close()
     return 0
 def set_windowcolor(color_in_hex):
