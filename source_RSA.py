@@ -2,7 +2,7 @@ from Crypto.PublicKey import RSA
 from Crypto.Cipher import PKCS1_v1_5
 from Crypto.Signature import PKCS1_v1_5 as PKCS1_v1_5_2
 from Crypto.Signature import PKCS1_PSS
-from Crypto.Hash import SHA256
+from Crypto.Hash import SHA1, SHA256
 # -*- coding: utf8 -*-
 from tkinter import *
 import tkinter.ttk
@@ -36,7 +36,7 @@ def verify_sign(data_to_verify, file_contains_signature, file_contains_key):
         print ("OK")
     else:
         print ("Invalid")
-def sign_digital(hashingtext, file_contains_key, mode):
+def sign_digital(hashingtext, file_contains_key):
     with open(file_contains_key, 'rb') as file:
         key = RSA.importKey(file.read())
     cipher = PKCS1_v1_5_2.new(key)
@@ -45,18 +45,21 @@ def sign_digital(hashingtext, file_contains_key, mode):
     with open('signature.sig', 'wb') as file:
         file.write(signature)
 
-plaintext = 'Huynh Truong Minh Quang'.encode()
-hashingtext = SHA256.new(plaintext)
-print(hashingtext.hexdigest().encode())
-print(type(hashingtext))
+#plaintext = 'Huynh Truong Minh Quang'.encode()
+#hashingtext = SHA1.new(plaintext)
+with open('input.jpg', 'rb') as file:
+    plaintext = file.read()
+#print(hashingtext.hexdigest().encode())
 
-Mode = ['DER', 'DEM']
-#generate_key('rsapub.der', 'rsapri.der', Mode[0], 2048)
-#enc = encrypt_rsa(hashingtext.hexdigest().encode(), 'rsapub.der', Mode[0])
-#dec = decrypt_rsa(enc, 'rsapri.der', Mode[0])
+#Mode = ['DER', 'PEM']
+#generate_key('rsapub.' + Mode[1], 'rsapri.' + Mode[1], Mode[1], 1024)
+#enc = encrypt_rsa(plaintext, 'rsapub.' + Mode[1], Mode[1])
+#plain = enc.hex()
+#print(plain)
+#dec = decrypt_rsa(bytearray.fromhex(plain), 'rsapri.' + Mode[1], Mode[1])
 #print(dec.decode())
 
-sign_digital(hashingtext, 'rsapri.der', Mode[0])
-verify_sign(plaintext, 'signature.sig', 'rsapub.der')
+#sign_digital(hashingtext, 'rsapri.der')
+verify_sign(plaintext, 'firstsig.sig', 'rsapub.der')
 
 
