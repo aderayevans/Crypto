@@ -11,8 +11,10 @@ from Crypto.PublicKey import RSA
 from Crypto.Cipher import PKCS1_v1_5
 from Crypto.Signature import PKCS1_v1_5 as PKCS1_v1_5_2
 from Crypto.Signature import PKCS1_PSS
-import datetime
-import pickle
+from OpenSSL import crypto, SSL
+from socket import gethostname
+from pprint import pprint
+from time import gmtime, mktime
 import binascii
 import base64
 import os
@@ -1371,28 +1373,28 @@ class SigningWindow(tk.Toplevel):
         self.parent = parent
         tk.Toplevel.__init__(self)
         self.title('Tạo chữ ký')
-        self.geometry('600x500')
+        self.geometry('600x250')
         self.frame = tk.Frame(self)
         self.frame.pack()
-        self.link_label_file = tk.Label(self.frame, text="Đường dẫn tệp tin: "
+        self.group = tk.LabelFrame(self.frame)
+        self.group.pack()
+        self.link_label_file = tk.Label(self.group, text="Đường dẫn tệp tin: "
                                    , font=("Times New Roman", 13))
         self.link_label_file.grid(column=0, row=0, sticky="W")
-        self.link_text_file = tk.Entry(self.frame, width=50)
+        self.link_text_file = tk.Entry(self.group, width=50)
         self.link_text_file.grid(column=1, row=0)
-        self.link_button_file = tk.Button(self.frame, text="Chọn tệp", command=self.browse_file)
+        self.link_button_file = tk.Button(self.group, text="Chọn tệp", command=self.browse_file)
         self.link_button_file.grid(column=2, row=0)
-        self.link_label_key = tk.Label(self.frame, text="Đường dẫn khóa cá nhân: "
+        self.link_label_key = tk.Label(self.group, text="Đường dẫn khóa cá nhân: "
                                         , font=("Times New Roman", 13))
         self.link_label_key.grid(column=0, row=1, sticky="W")
-        self.link_text_key = tk.Entry(self.frame, width=50)
+        self.link_text_key = tk.Entry(self.group, width=50)
         self.link_text_key.grid(column=1, row=1)
-        self.link_button_key = tk.Button(self.frame, text="Chọn tệp", command=self.browse_key)
+        self.link_button_key = tk.Button(self.group, text="Chọn tệp", command=self.browse_key)
         self.link_button_key.grid(column=2, row=1)
-        self.group = tk.LabelFrame(self)
-        self.group.pack(side=tk.TOP, expand=True, fill=tk.BOTH)
-        self.func_group = tk.LabelFrame(self.group, borderwidth=0, highlightthickness=0, text="Chọn thuật toán băm"
+        self.func_group = tk.LabelFrame(self.frame, borderwidth=0, highlightthickness=0, text="Chọn thuật toán băm"
                                         , font=("Times New Roman", 13))
-        self.func_group.pack(side=tk.LEFT, fill="both", expand="yes")
+        self.func_group.pack()
         self.func_val = tk.IntVar()
         self.sha1_func = tk.Radiobutton(self.func_group, text="Hash SHA1"
                                         , font=("Times New Roman", 11), variable=self.func_val, value=0)
@@ -1412,17 +1414,7 @@ class SigningWindow(tk.Toplevel):
         self.sha512_func = tk.Radiobutton(self.func_group, text="Hash SHA512"
                                           , font=("Times New Roman", 11), variable=self.func_val, value=5)
         self.sha512_func.grid(row=2, column=1, sticky="W")
-        self.scheme_group = tk.LabelFrame(self.group, borderwidth=0, highlightthickness=0, text="Chọn sơ đồ chữ ký"
-                                        , font=("Times New Roman", 13))
-        self.scheme_group.pack(side=tk.LEFT, fill="both", expand="yes")
-        self.scheme_val = tk.IntVar()  #
-        self.v1_5 = tk.Radiobutton(self.scheme_group, text="PKCS1_v1_5"
-                                  , font=("Times New Roman", 11), variable=self.scheme_val, value=0)
-        self.v1_5.pack(anchor=tk.W)
-        self.pss = tk.Radiobutton(self.scheme_group, text="PKCS1_PSS"
-                                  , font=("Times New Roman", 11), variable=self.scheme_val, value=1)
-        self.pss.pack(anchor=tk.W)
-        self.sign_button = tk.Button(self, text="Tạo chữ ký số", command=self.generatesignature)
+        self.sign_button = tk.Button(self.frame, text="Tạo chữ ký số", command=self.generatesignature)
         self.sign_button.pack()
         self.back = tk.Button(self, text="Trở lại trang chính <---", command=self.back)
         self.back.pack(anchor='w', side=tk.BOTTOM)
@@ -1477,10 +1469,7 @@ class SigningWindow(tk.Toplevel):
             hashingtext = SHA384.new(plaintext)
         else:
             hashingtext = SHA512.new(plaintext)
-        if self.scheme_val.get() == 0:
-            cipher = PKCS1_v1_5_2.new(key)
-        else:
-            cipher = PKCS1_PSS.new(key)
+        cipher = PKCS1_v1_5_2.new(key)
         signature = cipher.sign(hashingtext)
         save_file(signature, 'wb', 'Save as',
                   (("All files", "*.*"),
@@ -1493,138 +1482,145 @@ class SigningWindow(tk.Toplevel):
     def back(self):
         root.deiconify()
         self.destroy()
-class Date:
-    def __init__(self, day, month, year):
-        self.day = day
-        self.month = month
-        self.year = year
-    def set_day(self, day):
-        self.day = day
-    def set_month(self, month):
-        self.month = month
-    def set_year(self, year):
-        self.year = year
-    def get_day(self):
-        return self.day
-    def get_month(self):
-        return self.month
-    def get_year(self):
-        return self.year
-class DigitalCertification:
-    def __init__(self):
-        self.name = ''
-        self.serial = 0
-        self.period = Date(0, 0, 0)
-        self.authority = ''
-        self.publickey = None
-    def set_name(self, name):
-        self.name = name
-    def set_serial(self, serial):
-        self.serial = serial
-    def set_period(self, period):
-        self.period.set_day(period.get_day())
-        self.period.set_month(period.get_month())
-        self.period.set_year(period.get_year())
-    def set_authority(self, authority):
-        self.authority = authority
-    def set_publickey(self, publickey):
-        self.publickey = publickey
-    def get_name(self):
-        return self.name
-    def get_serial(self):
-        return self.serial
-    def get_period(self):
-        return self.period
-    def get_authority(self):
-        return self.authority
-    def get_publickey(self):
-        return self.publickey
 class CertificationWindow(tk.Toplevel):
     def __init__(self, parent):
         self.parent = parent
         tk.Toplevel.__init__(self)
+        self.validtime_year = 10
         self.title('Tạo chứng thư số')
-        self.geometry('600x500')
+        self.geometry('600x200')
         self.frame = tk.Frame(self)
         self.frame.pack()
-        self.name_label = tk.Label(self.frame, text="Tên: "
+        self.country_label = tk.Label(self.frame, text="Quốc gia: "
                                     , font=("Times New Roman", 13))
-        self.name_label.grid(column=0, row=0, sticky="W")
-        self.name_text = tk.Entry(self.frame, width=50)
-        self.name_text.grid(column=1, row=0)
-        self.link_label = tk.Label(self.frame, text="Đường dẫn khóa: "
-                                        , font=("Times New Roman", 13))
-        self.link_label.grid(column=0, row=1, sticky="W")
-        self.link_text = tk.Entry(self.frame, width=50)
-        self.link_text.grid(column=1, row=1)
-        self.link_button = tk.Button(self.frame, text="Chọn tệp", command=self.browse_file)
-        self.link_button.grid(column=2, row=1)
+        self.country_label.grid(column=0, row=0, sticky="W")
+        self.country_text = tk.Entry(self.frame, width=50)
+        self.country_text.grid(column=1, row=0)
+        self.state_label = tk.Label(self.frame, text="Tỉnh/Thành phố: "
+                                   , font=("Times New Roman", 13))
+        self.state_label.grid(column=0, row=1, sticky="W")
+        self.state_text = tk.Entry(self.frame, width=50)
+        self.state_text.grid(column=1, row=1)
+        self.locality_label = tk.Label(self.frame, text="Địa phương: "
+                                    , font=("Times New Roman", 13))
+        self.locality_label.grid(column=0, row=2, sticky="W")
+        self.locality_text = tk.Entry(self.frame, width=50)
+        self.locality_text.grid(column=1, row=2)
+        self.organization_label = tk.Label(self.frame, text="Tên công ty/tổ chức: "
+                                    , font=("Times New Roman", 13))
+        self.organization_label.grid(column=0, row=3, sticky="W")
+        self.organization_text = tk.Entry(self.frame, width=50)
+        self.organization_text.grid(column=1, row=3)
+        self.organizational_unit_label = tk.Label(self.frame, text="Tên đơn vị: "
+                                    , font=("Times New Roman", 13))
+        self.organizational_unit_label.grid(column=0, row=4, sticky="W")
+        self.organizational_unit_text = tk.Entry(self.frame, width=50)
+        self.organizational_unit_text.grid(column=1, row=4)
         self.sign_button = tk.Button(self, text="Tạo chứng thư", command=self.create)
         self.sign_button.pack()
         self.back = tk.Button(self, text="Trở lại trang chính <---", command=self.back)
         self.back.pack(anchor='w', side=tk.BOTTOM)
-    def get_name(self):
+    def get_country(self):
         while True:
             try:
-                if self.name_text.get() == '':
+                if self.country_text.get() == '':
                     raise SyntaxError('Error')
-                name = self.name_text.get()
+                if len(self.country_text.get()) != 2:
+                    raise Exception('Error')
+                country = self.country_text.get()
                 break
             except SyntaxError:
                 ErrorMessage('01', 0)
                 raise
-        return name
-    def set_link(self, text):
-        self.link_text.delete(0,tk.END)
-        self.link_text.insert(tk.INSERT, text)
-    def get_link(self):
+            except Exception:
+                ErrorMessage('xx', 0)
+                raise
+        return country
+    def get_state(self):
         while True:
             try:
-                if self.link_text.get() == '':
+                if self.state_text.get() == '':
                     raise SyntaxError('Error')
-                link = self.link_text.get()
+                state = self.state_text.get()
                 break
             except SyntaxError:
                 ErrorMessage('01', 0)
                 raise
-        return link
-    def get_publickey(self):
+        return state
+    def get_locality(self):
         while True:
             try:
-                with open(self.get_link(), 'rb') as fo:
-                    key = fo.read()
+                if self.locality_text.get() == '':
+                    raise SyntaxError('Error')
+                locality = self.locality_text.get()
                 break
-            except FileNotFoundError:
-                ErrorMessage('06', 0)
+            except SyntaxError:
+                ErrorMessage('01', 0)
                 raise
-        return key
-    def get_serial(self):
-        with open('certificationserial.txt', 'rb') as fo:
-            currentserial = fo.read()
-        print("sada" + currentserial.decode())
-        currentserial = int(currentserial.decode(), 10) + 1
-        currentserial = str(currentserial)
-        with open('certificationserial.txt', 'wb') as fo:
-            fo.write(currentserial.encode())
-        return currentserial
-    def get_period(self):
-        dt = datetime.datetime.today()
-        return Date(dt.day, dt.month, dt.year)
-    def get_authority(self):
-        return 'Viettel-CA'
+        return locality
+    def get_organization(self):
+        while True:
+            try:
+                if self.organization_text.get() == '':
+                    raise SyntaxError('Error')
+                organization = self.organization_text.get()
+                break
+            except SyntaxError:
+                ErrorMessage('01', 0)
+                raise
+        return organization
+    def get_organizational_unit(self):
+        while True:
+            try:
+                if self.organizational_unit_text.get() == '':
+                    raise SyntaxError('Error')
+                organizational_unit = self.organizational_unit_text.get()
+                break
+            except SyntaxError:
+                ErrorMessage('01', 0)
+                raise
+        return organizational_unit
     def create(self):
-        certification = DigitalCertification()
-        certification.set_name(self.get_name())
-        certification.set_serial(self.get_serial())
-        certification.set_period(self.get_period())
-        certification.set_authority(self.get_authority())
-        certification.set_publickey(self.get_publickey())
-        save_object(certification, 'wb', 'Save as',
-                  (("All files", "*.*"),
-                   ("Digital Certification files", "*.dcq")), ".dcq")
+        k = crypto.PKey()
+        k.generate_key(crypto.TYPE_RSA, 1024)
+        cert = crypto.X509()
+        cert.get_subject().C = self.get_country()
+        cert.get_subject().ST = self.get_state()
+        cert.get_subject().L = self.get_locality()
+        cert.get_subject().O = self.get_organization()
+        cert.get_subject().OU = self.get_organizational_unit()
+        cert.get_subject().CN = gethostname()
+        cert.set_serial_number(1000)
+        cert.gmtime_adj_notBefore(0)
+        cert.gmtime_adj_notAfter(self.validtime_year * 365 * 24 * 60 * 60)
+        cert.set_issuer(cert.get_subject())
+        cert.set_pubkey(k)
+        cert.sign(k, 'sha256')
+        while True:
+            try:
+                f = tk.filedialog.asksaveasfile(mode='wb', initialdir="D:/",
+                        title='Lưu chứng thư', filetypes=(("All files", "*.*"),
+                                                          ("Certification files", "*.crt")), defaultextension=".crt")
+                if f is None:
+                    raise TypeError('Error')
+                break
+            except TypeError:
+                ErrorMessage('xx')
+        f.write(crypto.dump_certificate(crypto.FILETYPE_PEM, cert))
+        f.close()
+        while True:
+            try:
+                f = tk.filedialog.asksaveasfile(mode='wb', initialdir="D:/",
+                        title='Lưu khóa cá nhân', filetypes=(("All files", "*.*"),
+                                                             ("Certification files", "*.pem")), defaultextension=".pem")
+                if f is None:
+                    raise TypeError('Error')
+                break
+            except TypeError:
+                ErrorMessage('xx')
+        f.write(crypto.dump_privatekey(crypto.FILETYPE_PEM, k))
+        f.close()
         SuccessMessage('Tạo chứng thư')
-    def browse_file(self):
-        self.set_link(browse_file())
     def back(self):
         root.deiconify()
         self.destroy()
@@ -1633,35 +1629,35 @@ class VerifyingWindow(tk.Toplevel):
         self.parent = parent
         tk.Toplevel.__init__(self)
         self.title('Xác minh nguồn gốc tập tin')
-        self.geometry('600x500')
+        self.geometry('600x250')
         self.frame = tk.Frame(self)
         self.frame.pack()
-        self.link_label_file = tk.Label(self.frame, text="Đường dẫn tệp tin: "
+        self.group = tk.LabelFrame(self.frame)
+        self.group.pack()
+        self.link_label_file = tk.Label(self.group, text="Đường dẫn tệp tin: "
                                         , font=("Times New Roman", 13))
         self.link_label_file.grid(column=0, row=0, sticky="W")
-        self.link_text_file = tk.Entry(self.frame, width=50)
+        self.link_text_file = tk.Entry(self.group, width=50)
         self.link_text_file.grid(column=1, row=0)
-        self.link_button_file = tk.Button(self.frame, text="Chọn tệp", command=self.browse_file)
+        self.link_button_file = tk.Button(self.group, text="Chọn tệp", command=self.browse_file)
         self.link_button_file.grid(column=2, row=0)
-        self.link_label_key = tk.Label(self.frame, text="Đường dẫn chứng thư: "
+        self.link_label_key = tk.Label(self.group, text="Đường dẫn chứng thư: "
                                        , font=("Times New Roman", 13))
         self.link_label_key.grid(column=0, row=1, sticky="W")
-        self.link_text_key = tk.Entry(self.frame, width=50)
+        self.link_text_key = tk.Entry(self.group, width=50)
         self.link_text_key.grid(column=1, row=1)
-        self.link_button_key = tk.Button(self.frame, text="Chọn tệp", command=self.browse_key)
+        self.link_button_key = tk.Button(self.group, text="Chọn tệp", command=self.browse_key)
         self.link_button_key.grid(column=2, row=1)
-        self.link_label_sig = tk.Label(self.frame, text="Đường dẫn chữ ký: "
+        self.link_label_sig = tk.Label(self.group, text="Đường dẫn chữ ký: "
                                        , font=("Times New Roman", 13))
         self.link_label_sig.grid(column=0, row=2, sticky="W")
-        self.link_text_sig = tk.Entry(self.frame, width=50)
+        self.link_text_sig = tk.Entry(self.group, width=50)
         self.link_text_sig.grid(column=1, row=2)
-        self.link_button_sig = tk.Button(self.frame, text="Chọn tệp", command=self.browse_sig)
+        self.link_button_sig = tk.Button(self.group, text="Chọn tệp", command=self.browse_sig)
         self.link_button_sig.grid(column=2, row=2)
-        self.group = tk.LabelFrame(self)
-        self.group.pack(side=tk.TOP, expand=True, fill=tk.BOTH)
-        self.func_group = tk.LabelFrame(self.group, borderwidth=0, highlightthickness=0, text="Chọn thuật toán băm"
+        self.func_group = tk.LabelFrame(self.frame, borderwidth=0, highlightthickness=0, text="Chọn thuật toán băm"
                                         , font=("Times New Roman", 13))
-        self.func_group.pack(side=tk.LEFT, fill="both", expand="yes")
+        self.func_group.pack()
         self.func_val = tk.IntVar()
         self.sha1_func = tk.Radiobutton(self.func_group, text="Hash SHA1"
                                         , font=("Times New Roman", 11), variable=self.func_val, value=0)
@@ -1681,17 +1677,7 @@ class VerifyingWindow(tk.Toplevel):
         self.sha512_func = tk.Radiobutton(self.func_group, text="Hash SHA512"
                                           , font=("Times New Roman", 11), variable=self.func_val, value=5)
         self.sha512_func.grid(row=2, column=1, sticky="W")
-        self.scheme_group = tk.LabelFrame(self.group, borderwidth=0, highlightthickness=0, text="Chọn sơ đồ chữ ký"
-                                          , font=("Times New Roman", 13))
-        self.scheme_group.pack(side=tk.LEFT, fill="both", expand="yes")
-        self.scheme_val = tk.IntVar()  #
-        self.v1_5 = tk.Radiobutton(self.scheme_group, text="PKCS1_v1_5"
-                                   , font=("Times New Roman", 11), variable=self.scheme_val, value=0)
-        self.v1_5.pack(anchor=tk.W)
-        self.pss = tk.Radiobutton(self.scheme_group, text="PKCS1_PSS"
-                                  , font=("Times New Roman", 11), variable=self.scheme_val, value=1)
-        self.pss.pack(anchor=tk.W)
-        self.sign_button = tk.Button(self, text="Xác minh tệp tin", command=self.verify_file)
+        self.sign_button = tk.Button(self.frame, text="Xác minh tệp tin", command=self.verify_file)
         self.sign_button.pack()
         self.back = tk.Button(self, text="Trở lại trang chính <---", command=self.back)
         self.back.pack(anchor='w', side=tk.BOTTOM)
@@ -1748,30 +1734,33 @@ class VerifyingWindow(tk.Toplevel):
         self.link_text_sig.insert(tk.INSERT, text)
     def verify_file(self):
         signature = open(self.get_link_sig(), "rb").read()
-        with open(self.get_link_key(), 'rb') as input:
-            the_object = pickle.load(input)
-        key = RSA.importKey(the_object.get_publickey())
         plaintext = open(self.get_link_file(), "rb").read()
-        if self.scheme_val.get() == 0:
-            verifier = PKCS1_v1_5_2.new(key)
-        else:
-            verifier = PKCS1_PSS.new(key)
         if self.func_val.get() == 0:
-            hashingtext = SHA1.new(plaintext)
+            digest = 'sha1'
         elif self.func_val.get() == 1:
-            hashingtext = MD5.new(plaintext)
+            digest = 'md5'
         elif self.func_val.get() == 2:
-            hashingtext = SHA256.new(plaintext)
+            digest = 'sha256'
         elif self.func_val.get() == 3:
-            hashingtext = SHA224.new(plaintext)
+            digest = 'sha224'
         elif self.func_val.get() == 4:
-            hashingtext = SHA384.new(plaintext)
+            digest = 'sha384'
         else:
-            hashingtext = SHA512.new(plaintext)
-        if verifier.verify(hashingtext, signature):
-            AcceptMessage()
-        else:
+            digest = 'sha512'
+        try:
+            x509 = crypto.load_certificate(crypto.FILETYPE_PEM, open('newwaycertification.crt', 'rb').read())
+            key_object = x509.get_pubkey()
+            key_str = crypto.dump_publickey(crypto.FILETYPE_PEM, key_object)
+            key = crypto.load_publickey(crypto.FILETYPE_PEM, key_str)
+            x509 = crypto.X509()
+            x509.set_pubkey(key)
+            if crypto.verify(x509, signature, plaintext, digest) == None:
+                AcceptMessage()
+            else:
+                raise Exception('ss')
+        except Exception as e:
             RefuseMessage()
+            raise
     def browse_file(self):
         self.set_link_file(browse_file())
     def browse_key(self):
@@ -1924,14 +1913,6 @@ def save_file(content, _mode, _title, _filetypes, _defaultextension):
     if f is None:
         return
     f.write(content)
-    f.close()
-    return 0
-def save_object(the_object, _mode, _title, _filetypes, _defaultextension):
-    f = tk.filedialog.asksaveasfile(mode=_mode, initialdir="D:/",
-                    title=_title, filetypes = _filetypes, defaultextension = _defaultextension)
-    if f is None:
-        return
-    pickle.dump(the_object, f, pickle.HIGHEST_PROTOCOL)
     f.close()
     return 0
 def set_windowcolor(color_in_hex):

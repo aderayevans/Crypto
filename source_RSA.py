@@ -3,6 +3,7 @@ from Crypto.Cipher import PKCS1_v1_5
 from Crypto.Signature import PKCS1_v1_5 as PKCS1_v1_5_2
 from Crypto.Signature import PKCS1_PSS
 from Crypto.Hash import SHA1, SHA256
+from OpenSSL import crypto, SSL
 # -*- coding: utf8 -*-
 from tkinter import *
 import tkinter.ttk
@@ -28,6 +29,7 @@ def verify_sign(data_to_verify, file_contains_signature, file_contains_key):
     with open(file_contains_signature, 'rb') as file:
         signature = file.read()
     key = RSA.importKey(open(file_contains_key, "rb").read())
+    print(type(key))
     verifier = PKCS1_v1_5_2.new(key)
     hashingtext = SHA256.new(data_to_verify)
     print(hashingtext.hexdigest().encode())
@@ -46,10 +48,8 @@ def sign_digital(hashingtext, file_contains_key):
         file.write(signature)
 
 #plaintext = 'Huynh Truong Minh Quang'.encode()
-#hashingtext = SHA1.new(plaintext)
-with open('input.jpg', 'rb') as file:
+with open('testjpg.jpg', 'rb') as file:
     plaintext = file.read()
-#print(hashingtext.hexdigest().encode())
 
 #Mode = ['DER', 'PEM']
 #generate_key('rsapub.' + Mode[1], 'rsapri.' + Mode[1], Mode[1], 1024)
@@ -60,6 +60,6 @@ with open('input.jpg', 'rb') as file:
 #print(dec.decode())
 
 #sign_digital(hashingtext, 'rsapri.der')
-verify_sign(plaintext, 'firstsig.sig', 'rsapub.der')
+verify_sign(plaintext, 'firstsignature.sig', 'rsapub.der')
 
 
